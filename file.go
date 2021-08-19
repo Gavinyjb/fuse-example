@@ -1,12 +1,17 @@
 package main
 
 import (
+	//"fmt"
 	"log"
+	"os"
+
+	//"os"
+	"syscall"
 
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
 	"bazil.org/fuse/fuseutil"
-	"golang.org/x/net/context"
+	"context"
 )
 
 type File struct {
@@ -23,19 +28,57 @@ func (f *File) Attr(ctx context.Context, a *fuse.Attr) error {
 }
 func (f *File) Read(ctx context.Context, req *fuse.ReadRequest, resp *fuse.ReadResponse) error {
 	log.Println("Requested Read on File", f.name)
-	fuseutil.HandleRead(req, resp, f.data)
+	name := f.name
+	bBlockId, flag := match(name)
+
+	fd, err := syscall.Open("/dev/sdb", os.O_RDWR, 0777)
+	if err != nil {
+		log.Fatal(err)
+	}
+	output := readFile(fd, flag, bBlockId)
+	fuseutil.HandleRead(req, resp, output)
+	err = syscall.Close(fd)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
 func (f *File) ReadAll(ctx context.Context) ([]byte, error) {
 	log.Println("Reading all of file", f.name)
-	return []byte(f.data), nil
+	name := f.name
+	bBlockId, flag := match(name)
+
+	fd, err := syscall.Open("/dev/sdb", os.O_RDWR, 0777)
+	if err != nil {
+		log.Fatal(err)
+	}
+	output := readFile(fd, flag, bBlockId)
+	log.Println(output)
+	return output, nil
 }
 
 func (f *File) Write(ctx context.Context, req *fuse.WriteRequest, resp *fuse.WriteResponse) error {
 	log.Println("Trying to write to ", f.name, "offset", req.Offset, "dataSize:", len(req.Data), "data: ", string(req.Data))
 	resp.Size = len(req.Data)
-	f.data = req.Data
+
+	name := f.name
+	bBlockId, flag := match(name)
+
+	fd, err := syscall.Open("/dev/sdb", os.O_RDWR, 0777)
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = writeFile(fd, req.Data, flag, bBlockId)
+	if err != nil {
+		log.Println("写文件出错")
+	}
+	err = syscall.Close(fd)
+	if err != nil {
+		return err
+	}
+
+	//f.data = req.Data
 	log.Println("Wrote to file", f.name)
 	return nil
 }

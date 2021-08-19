@@ -4,6 +4,7 @@ import (
 	"flag"
 	"log"
 	"os"
+	"syscall"
 
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
@@ -45,21 +46,44 @@ func main() {
 		log.Panicln("kernel FUSE support is too old to have invalidations: version %v", p)
 	}
 	srv := fs.New(c, nil)
+	fd, _ := syscall.Open("/dev/sdb", os.O_RDWR, 0777)
+
+	files := startFS(fd)
+	syscall.Close(fd)
+	var filesMeta []*File
+	copy(filesMeta, files)
+	for _, file := range files {
+		file.inode = NewInode()
+	}
+	for _, file := range filesMeta {
+		file.inode = NewInode()
+		file.name = file.name + "_1001.meta"
+	}
+	files = append(files, filesMeta...)
+
+	//filesys := &FS{
+	//	&Dir{Node: Node{name: "head", inode: NewInode()}, files: &[]*File{
+	//		&File{Node: Node{name: "blk_103741826_1001.meta", inode: NewInode()}, data: []byte("hello world!")},
+	//		&File{Node: Node{name: "aybbg", inode: NewInode()}, data: []byte("send notes")},
+	//	}, directories: &[]*Dir{
+	//		&Dir{Node: Node{name: "left", inode: NewInode()}, files: &[]*File{
+	//			&File{Node: Node{name: "yo", inode: NewInode()}, data: []byte("ayylmaooo")},
+	//		},
+	//		},
+	//		&Dir{Node: Node{name: "right", inode: NewInode()}, files: &[]*File{
+	//			&File{Node: Node{name: "hey", inode: NewInode()}, data: []byte("heeey, thats pretty good")},
+	//		},
+	//		},
+	//	},
+	//	}}
+
 	filesys := &FS{
-		&Dir{Node: Node{name: "head", inode: NewInode()}, files: &[]*File{
-			&File{Node: Node{name: "hello", inode: NewInode()}, data: []byte("hello world!")},
-			&File{Node: Node{name: "aybbg", inode: NewInode()}, data: []byte("send notes")},
-		}, directories: &[]*Dir{
-			&Dir{Node: Node{name: "left", inode: NewInode()}, files: &[]*File{
-				&File{Node: Node{name: "yo", inode: NewInode()}, data: []byte("ayylmaooo")},
-			},
-			},
-			&Dir{Node: Node{name: "right", inode: NewInode()}, files: &[]*File{
-				&File{Node: Node{name: "hey", inode: NewInode()}, data: []byte("heeey, thats pretty good")},
-			},
-			},
+		&Dir{
+			Node:        Node{name: "head", inode: NewInode()},
+			files:       &files,
+			directories: nil,
 		},
-		}}
+	}
 	log.Println("About to serve fs")
 	if err := srv.Serve(filesys); err != nil {
 		log.Panicln(err)

@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"syscall"
 
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
@@ -86,6 +87,19 @@ func (d *Dir) Remove(ctx context.Context, req *fuse.RemoveRequest) error {
 		for _, f := range *d.files {
 			if f.name != req.Name {
 				newFiles = append(newFiles, f)
+			}
+		}
+		for _, f := range *d.files {
+			if f.name == req.Name {
+				name := f.name
+				bBlockId, _ := match(name)
+
+				fd, err := syscall.Open("/dev/sdb", os.O_RDWR, 0777)
+				if err != nil {
+					log.Fatal(err)
+				}
+				deleteFile(fd, bBlockId)
+
 			}
 		}
 		d.files = &newFiles
