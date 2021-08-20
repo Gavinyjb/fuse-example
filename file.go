@@ -16,14 +16,15 @@ import (
 
 type File struct {
 	Node
-	data []byte
+	//data []byte
+	length uint64
 }
 
 func (f *File) Attr(ctx context.Context, a *fuse.Attr) error {
-	log.Println("Requested Attr for File", f.name, "has data size", len(f.data))
+	log.Println("Requested Attr for File", f.name, "has data size", f.length)
 	a.Inode = f.inode
 	a.Mode = 0777
-	a.Size = uint64(len(f.data))
+	a.Size = f.length
 	return nil
 }
 func (f *File) Read(ctx context.Context, req *fuse.ReadRequest, resp *fuse.ReadResponse) error {
@@ -79,6 +80,7 @@ func (f *File) Write(ctx context.Context, req *fuse.WriteRequest, resp *fuse.Wri
 	}
 
 	//f.data = req.Data
+	f.length = uint64(len(req.Data))
 	log.Println("Wrote to file", f.name)
 	return nil
 }

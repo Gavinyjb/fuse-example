@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/hex"
-	"fmt"
 	"log"
 	"reflect"
 	"syscall"
@@ -133,20 +132,21 @@ func BytesToBlockInfo(b []byte) *blockInfo {
 func ReadSuperBlock(fd int) (sb *superBlock) {
 
 	var bytetest = make([]byte, unsafe.Sizeof(superBlock{}))
-	num, _ := syscall.Read(fd, bytetest)
-	log.Println("/dev/sdb test", bytetest)
-	log.Println("num:", num)
+	_, _ = syscall.Read(fd, bytetest)
+
+	//log.Println("/dev/sdb test", bytetest)
+	//log.Println("num:", num)
 
 	//[]byte转16进制输出
-	encodedtest := hex.EncodeToString(bytetest)
-	log.Println(encodedtest)
+	//encodedtest := hex.EncodeToString(bytetest)
+	//log.Println(encodedtest)
 
 	sb = BytesToSuperBlock(bytetest)
-	fmt.Println(sb)
-	log.Println("block_size", sb.sBlockSize)
-	log.Println("sb.sMagic", sb.sMagic)
-	log.Println("sb.sBlockCounts", sb.sBlockCounts)
-	log.Println("dev_size", sb.sDevSize)
+	//fmt.Println(sb)
+	//log.Println("block_size", sb.sBlockSize)
+	//log.Println("sb.sMagic", sb.sMagic)
+	//log.Println("sb.sBlockCounts", sb.sBlockCounts)
+	//log.Println("dev_size", sb.sDevSize)
 
 	return sb
 }
@@ -155,11 +155,11 @@ func ReadSuperBlock(fd int) (sb *superBlock) {
 func readBitmap(fd int, devSize uint32, blockSize uint32) (pBitmap []byte) {
 	len := BitmapSize(uintptr(devSize), uintptr(blockSize))
 	pBitmap = make([]byte, len)
-	log.Println("len:", len)
+	//log.Println("len:", len)
 	offset := BitmapOffset()
-	log.Println("offset", offset)
+	//log.Println("offset", offset)
 	syscall.Pread(fd, pBitmap, int64(offset))
-	log.Println("p_bitmap:", pBitmap)
+	//log.Println("p_bitmap:", pBitmap)
 	encodeBitmap := hex.EncodeToString(pBitmap)
 	log.Println("BitMap:", encodeBitmap)
 	log.Println("bitmap的len:", len)
@@ -258,7 +258,7 @@ func bitmapSet(index int, oldBitmap []byte, fd int, bitSize uintptr) {
 	mask <<= r
 	v = v | mask
 	oldBitmap[i] = v
-	log.Println(oldBitmap)
+	//log.Println(oldBitmap)
 	_, err := syscall.Pwrite(fd, oldBitmap, int64(offset))
 	if err != nil {
 		log.Fatal("bitmap更新失败-添加")
@@ -276,7 +276,7 @@ func bitmapUnset(index int, oldBitmap []byte, fd int, bitSize uintptr) {
 	mask <<= r
 	v = v ^ mask
 	oldBitmap[i] = v
-	log.Println(oldBitmap)
+	//log.Println(oldBitmap)
 	_, err := syscall.Pwrite(fd, oldBitmap, int64(offset))
 	if err != nil {
 		log.Fatal("bitmap更新失败-删除")

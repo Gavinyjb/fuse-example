@@ -40,9 +40,9 @@ func readFile(fd int, readFlag byte, bBlockId uint32) []byte {
 
 	//读取bitmap
 	pBitmap := readBitmap(fd, devSize, blockSize)
-	log.Println("p_bitmap:", pBitmap)
+	//log.Println("p_bitmap:", pBitmap)
 	bitSize := BlockNum(uintptr(devSize), uintptr(blockSize))
-	log.Println("bit_size", bitSize)
+	//log.Println("bit_size", bitSize)
 	//******************************************************************************************
 	//此处是采用转二进制字符串的方式
 	////p_bitmap 转二进制[]byte
@@ -157,17 +157,17 @@ func writeFile(fd int, data []byte, writeFlag byte, bBlockId uint32) error {
 	//根据data_block_id读取csm
 	//临时参数 这是一个标志 判断是校验数据还是元数据
 	//readFlag = 'c'
-	var writeLen int
-	writeLen = len(data)
+	//var writeLen int
+	//writeLen = len(data)
 	var devOffset uintptr
 	if writeFlag == 'c' {
-		log.Println(writeLen, writeFlag)
+		//log.Println(writeLen, writeFlag)
 		devOffset = DataOffset(uintptr(devSize), uintptr(blockSize)) + uintptr(uint32(dataBlockId)*blockSize)
-		log.Println("devOffset", devOffset)
+		//log.Println("devOffset", devOffset)
 	} else if writeFlag == 'd' {
-		log.Println(writeLen, writeFlag)
+		//log.Println(writeLen, writeFlag)
 		devOffset = DataOffset(uintptr(devSize), uintptr(blockSize)) + uintptr(uint32(dataBlockId)*blockSize) + 2*MbSize
-		log.Println("devOffset", devOffset)
+		//log.Println("devOffset", devOffset)
 	}
 	pwrite, err := syscall.Pwrite(fd, data, int64(devOffset))
 	if err != nil {
@@ -304,15 +304,32 @@ func startFS(fd int) (files []*File) {
 	bis = readblockInfo(fd, devSize, blockSize)
 	//log.Println("bis:", bis)
 	var fileNames []string
+	var fileCsmNames []string
 
 	for _, dataBlockId := range usedBlocklist {
 		fileNames = append(fileNames, "blk_"+strconv.Itoa(int(bis[dataBlockId].bBlockId)))
+		fileCsmNames = append(fileCsmNames, "blk_"+strconv.Itoa(int(bis[dataBlockId].bBlockId))+"_1001.meta")
 	}
 
-	for _, name := range fileNames {
+	var fileLengths []uint64
+	var fileCsmLength []uint64
+	for _, datablockId := range usedBlocklist {
+		fileLengths = append(fileLengths, uint64(bis[datablockId].bDataLength))
+		fileCsmLength = append(fileCsmLength, uint64(bis[datablockId].bCsmLength))
+	}
+
+	for i, name := range fileNames {
 		var file *File
 		file = new(File)
 		file.name = name
+		file.length = fileLengths[i]
+		files = append(files, file)
+	}
+	for i, name := range fileCsmNames {
+		var file *File
+		file = new(File)
+		file.name = name
+		file.length = fileCsmLength[i]
 		files = append(files, file)
 	}
 	return files
