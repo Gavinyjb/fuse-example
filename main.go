@@ -10,6 +10,8 @@ import (
 	"bazil.org/fuse/fs"
 )
 
+var diskName string
+
 type Node struct {
 	inode uint64
 	name  string
@@ -18,7 +20,7 @@ type Node struct {
 var inode uint64
 var Usage = func() {
 	log.Printf("Usage of %s:\n", os.Args[0])
-	log.Printf("  %s MOUNTPOINT\n", os.Args[0])
+	log.Printf("  %s MOUNTPOINT  diskName\n", os.Args[0])
 	flag.PrintDefaults()
 }
 
@@ -31,11 +33,12 @@ func main() {
 	flag.Usage = Usage
 	flag.Parse()
 
-	if flag.NArg() != 1 {
+	if flag.NArg() != 2 {
 		Usage()
 		os.Exit(2)
 	}
 	mountpoint := flag.Arg(0)
+	diskName = flag.Arg(1)
 
 	c, err := fuse.Mount(mountpoint)
 	if err != nil {
@@ -46,7 +49,7 @@ func main() {
 		log.Panicln("kernel FUSE support is too old to have invalidations: version %v", p)
 	}
 	srv := fs.New(c, nil)
-	fd, _ := syscall.Open("/dev/sdb", os.O_RDWR, 0777)
+	fd, _ := syscall.Open(diskName, os.O_RDWR, 0777)
 
 	files := startFS(fd)
 	syscall.Close(fd)
@@ -78,7 +81,7 @@ func main() {
 	//	}}
 
 	filesys := &FS{
-		&Dir{
+		root: &Dir{
 			Node:        Node{name: "head", inode: NewInode()},
 			files:       &files,
 			directories: nil,

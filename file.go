@@ -32,7 +32,7 @@ func (f *File) Read(ctx context.Context, req *fuse.ReadRequest, resp *fuse.ReadR
 	name := f.name
 	bBlockId, flag := match(name)
 
-	fd, err := syscall.Open("/dev/sdb", os.O_RDWR, 0777)
+	fd, err := syscall.Open(diskName, os.O_RDWR, 0777)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -50,7 +50,7 @@ func (f *File) ReadAll(ctx context.Context) ([]byte, error) {
 	name := f.name
 	bBlockId, flag := match(name)
 
-	fd, err := syscall.Open("/dev/sdb", os.O_RDWR, 0777)
+	fd, err := syscall.Open(diskName, os.O_RDWR, 0777)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func (f *File) Write(ctx context.Context, req *fuse.WriteRequest, resp *fuse.Wri
 	name := f.name
 	bBlockId, flag := match(name)
 
-	fd, err := syscall.Open("/dev/sdb", os.O_RDWR, 0777)
+	fd, err := syscall.Open(diskName, os.O_RDWR, 0777)
 	if err != nil {
 		log.Fatal(err)
 	}

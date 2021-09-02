@@ -7,7 +7,7 @@ import (
 
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
-	"golang.org/x/net/context" // need this cause bazil lib doesn't use syslib context lib
+	"context" // need this cause bazil lib doesn't use syslib context lib
 )
 
 type Dir struct {
@@ -94,7 +94,7 @@ func (d *Dir) Remove(ctx context.Context, req *fuse.RemoveRequest) error {
 				name := f.name
 				bBlockId, _ := match(name)
 
-				fd, err := syscall.Open("/dev/sdb", os.O_RDWR, 0777)
+				fd, err := syscall.Open(diskName, os.O_RDWR, 0777)
 				if err != nil {
 					log.Fatal(err)
 				}
