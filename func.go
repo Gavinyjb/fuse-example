@@ -12,7 +12,7 @@ import (
 )
 
 //读取文件函数
-func readFile(fd int, readFlag byte, bBlockId uint32) []byte {
+func readFile(fd int, readFlag byte, bBlockId uint32, off int64) []byte {
 
 	log.Println("开始读函数")
 
@@ -99,13 +99,13 @@ func readFile(fd int, readFlag byte, bBlockId uint32) []byte {
 		log.Println("devOffset", devOffset)
 	}
 	output := make([]byte, readLen)
-	syscall.Pread(fd, output, int64(devOffset))
-	log.Println("output", output)
+	syscall.Pread(fd, output, int64(devOffset)+off)
+	//log.Println("output", output)
 	return output
 }
 
 //写入文件函数
-func writeFile(fd int, data []byte, writeFlag byte, bBlockId uint32) error {
+func writeFile(fd int, data []byte, writeFlag byte, bBlockId uint32, off int64) error {
 	log.Println("开始写函数")
 	//读取superblock
 	var sb *superBlock
@@ -169,7 +169,8 @@ func writeFile(fd int, data []byte, writeFlag byte, bBlockId uint32) error {
 		devOffset = DataOffset(uintptr(devSize), uintptr(blockSize)) + uintptr(uint32(dataBlockId)*blockSize) + 2*MbSize
 		//log.Println("devOffset", devOffset)
 	}
-	pwrite, err := syscall.Pwrite(fd, data, int64(devOffset))
+	log.Println(devOffset)
+	pwrite, err := syscall.Pwrite(fd, data, int64(devOffset)+off)
 	if err != nil {
 		log.Println("写入失败！")
 		return err
@@ -184,11 +185,11 @@ func writeFile(fd int, data []byte, writeFlag byte, bBlockId uint32) error {
 	bii = new(blockInfo)
 	bii.bBlockId = bBlockId
 	if writeFlag == 'c' {
-		bii.bCsmLength = uint32(len(data))
+		bii.bCsmLength += uint32(len(data))
 		bii.bDataLength = bis[dataBlockId].bDataLength
 		log.Println("bii.bCsmLength,bii.bDataLength", bii.bCsmLength, bii.bDataLength)
 	} else if writeFlag == 'd' {
-		bii.bDataLength = uint32(len(data))
+		bii.bDataLength += uint32(len(data))
 		bii.bCsmLength = bis[dataBlockId].bCsmLength
 		log.Println("bii.bCsmLength,bii.bDataLength", bii.bCsmLength, bii.bDataLength)
 	}
@@ -203,7 +204,7 @@ func writeFile(fd int, data []byte, writeFlag byte, bBlockId uint32) error {
 }
 
 //删除文件函数
-func deleteFile(fd int, bBlockId uint32) error {
+func deleteFile(fd int, bBlockId uint32, flag byte) error {
 	log.Println("开始删除数据块:", bBlockId)
 
 	//读取superblock
@@ -226,7 +227,7 @@ func deleteFile(fd int, bBlockId uint32) error {
 	//读取blockinfo
 	var bis []blockInfo
 	bis = readblockInfo(fd, devSize, blockSize)
-	//log.Println("bis:", bis)
+	//打印blockInfo信息
 	for i, bi := range bis {
 		fmt.Printf("bi[%d]:bi: ", i)
 		fmt.Println(bi.bCreatTime, bi.bUpdateTime, bi.bCsmLength, bi.bDataLength, bi.bBlockId)
@@ -242,9 +243,18 @@ func deleteFile(fd int, bBlockId uint32) error {
 	}
 
 	//删除操作
-	//改写bitmap
-	bitmapUnset(dataBlockId, pBitmap, fd, bitSize)
-
+	if flag == 'c' {
+		bis[dataBlockId].bCsmLength = 0
+	} else if flag == 'd' {
+		bis[dataBlockId].bDataLength = 0
+	}
+	//更新bloclInfo信息
+	InfoOffset := InfoOffset(uintptr(devSize), uintptr(blockSize)) + uintptr(dataBlockId)*unsafe.Sizeof(blockInfo{})
+	syscall.Pwrite(fd, blockInfoToBytes(&bis[dataBlockId]), int64(InfoOffset))
+	if (bis[dataBlockId].bDataLength == 0) && (bis[dataBlockId].bCsmLength == 0) {
+		//改写bitmap
+		bitmapUnset(dataBlockId, pBitmap, fd, bitSize)
+	}
 	err := syscall.Close(fd)
 	if err != nil {
 		log.Fatal(err)
@@ -307,8 +317,12 @@ func startFS(fd int) (files []*File) {
 	var fileCsmNames []string
 
 	for _, dataBlockId := range usedBlocklist {
-		fileNames = append(fileNames, "blk_"+strconv.Itoa(int(bis[dataBlockId].bBlockId)))
-		fileCsmNames = append(fileCsmNames, "blk_"+strconv.Itoa(int(bis[dataBlockId].bBlockId))+"_1001.meta")
+		if bis[dataBlockId].bDataLength != 0 {
+			fileNames = append(fileNames, "blk_"+strconv.Itoa(int(bis[dataBlockId].bBlockId)))
+		}
+		if bis[dataBlockId].bCsmLength != 0 {
+			fileCsmNames = append(fileCsmNames, "blk_"+strconv.Itoa(int(bis[dataBlockId].bBlockId))+"_1001.meta")
+		}
 	}
 
 	var fileLengths []uint64

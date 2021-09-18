@@ -92,13 +92,13 @@ func (d *Dir) Remove(ctx context.Context, req *fuse.RemoveRequest) error {
 		for _, f := range *d.files {
 			if f.name == req.Name {
 				name := f.name
-				bBlockId, _ := match(name)
+				bBlockId, flag := match(name)
 
 				fd, err := syscall.Open(diskName, os.O_RDWR, 0777)
 				if err != nil {
 					log.Fatal(err)
 				}
-				deleteFile(fd, bBlockId)
+				deleteFile(fd, bBlockId, flag)
 
 			}
 		}

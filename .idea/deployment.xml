@@ -5,7 +5,7 @@
       <paths name="vm-ubuntu">
         <serverdata>
           <mappings>
-            <mapping deploy="/home/gavin/Project/Fuse/fuse-example" local="$PROJECT_DIR$" web="/" />
+            <mapping deploy="/home/gavin/project/fuse-example" local="$PROJECT_DIR$" web="/" />
           </mappings>
         </serverdata>
       </paths>

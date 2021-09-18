@@ -36,7 +36,7 @@ func (f *File) Read(ctx context.Context, req *fuse.ReadRequest, resp *fuse.ReadR
 	if err != nil {
 		log.Fatal(err)
 	}
-	output := readFile(fd, flag, bBlockId)
+	output := readFile(fd, flag, bBlockId, req.Offset)
 	fuseutil.HandleRead(req, resp, output)
 	err = syscall.Close(fd)
 	if err != nil {
@@ -45,19 +45,19 @@ func (f *File) Read(ctx context.Context, req *fuse.ReadRequest, resp *fuse.ReadR
 	return nil
 }
 
-func (f *File) ReadAll(ctx context.Context) ([]byte, error) {
-	log.Println("Reading all of file", f.name)
-	name := f.name
-	bBlockId, flag := match(name)
-
-	fd, err := syscall.Open(diskName, os.O_RDWR, 0777)
-	if err != nil {
-		log.Fatal(err)
-	}
-	output := readFile(fd, flag, bBlockId)
-	log.Println(output)
-	return output, nil
-}
+//func (f *File) ReadAll(ctx context.Context) ([]byte, error) {
+//	log.Println("Reading all of file", f.name)
+//	name := f.name
+//	bBlockId, flag := match(name)
+//
+//	fd, err := syscall.Open(diskName, os.O_RDWR, 0777)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//	output := readFile(fd, flag, bBlockId,req.offset)
+//	log.Println(output)
+//	return output, nil
+//}
 
 func (f *File) Write(ctx context.Context, req *fuse.WriteRequest, resp *fuse.WriteResponse) error {
 	log.Println("Trying to write to ", f.name, "offset", req.Offset, "dataSize:", len(req.Data), "data: ", string(req.Data))
@@ -70,7 +70,7 @@ func (f *File) Write(ctx context.Context, req *fuse.WriteRequest, resp *fuse.Wri
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = writeFile(fd, req.Data, flag, bBlockId)
+	err = writeFile(fd, req.Data, flag, bBlockId, req.Offset)
 	if err != nil {
 		log.Println("写文件出错")
 	}
