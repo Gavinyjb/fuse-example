@@ -12,7 +12,7 @@ import (
 )
 
 //读取文件函数
-func readFile(fd int, readFlag byte, bBlockId uint32, off int64) []byte {
+func readFile(fd int, readFlag byte, bBlockId uint32, off int64, readsize int) []byte {
 
 	log.Println("开始读函数")
 
@@ -99,7 +99,11 @@ func readFile(fd int, readFlag byte, bBlockId uint32, off int64) []byte {
 		log.Println("devOffset", devOffset)
 	}
 	output := make([]byte, readLen)
-	syscall.Pread(fd, output, int64(devOffset)+off)
+	pread, err := syscall.Pread(fd, output, int64(devOffset))
+	log.Println("pread:", pread)
+	if err != nil {
+		return nil
+	}
 	//log.Println("output", output)
 	return output
 }
@@ -144,7 +148,9 @@ func writeFile(fd int, data []byte, writeFlag byte, bBlockId uint32, off int64) 
 	if len(usedBlocklist) == int(bitSize) {
 		log.Fatal("数据已经写满无法继续写入。。。")
 		return nil
-	} else if dataBlockId < 0 {
+	}
+	if dataBlockId < 0 {
+		//新文件
 		log.Printf("Can not find file with bBlockId %d.\n", bBlockId)
 		//availableList:=bitmapAvailableblockid(bs)
 		availableList := bitmapAvailableBlockId(pBitmap, bitSize)
@@ -154,11 +160,6 @@ func writeFile(fd int, data []byte, writeFlag byte, bBlockId uint32, off int64) 
 		dataBlockId = availableList[0]
 	}
 
-	//根据data_block_id读取csm
-	//临时参数 这是一个标志 判断是校验数据还是元数据
-	//readFlag = 'c'
-	//var writeLen int
-	//writeLen = len(data)
 	var devOffset uintptr
 	if writeFlag == 'c' {
 		//log.Println(writeLen, writeFlag)
@@ -185,11 +186,11 @@ func writeFile(fd int, data []byte, writeFlag byte, bBlockId uint32, off int64) 
 	bii = new(blockInfo)
 	bii.bBlockId = bBlockId
 	if writeFlag == 'c' {
-		bii.bCsmLength += uint32(len(data))
+		bii.bCsmLength = uint32(len(data)) + uint32(off)
 		bii.bDataLength = bis[dataBlockId].bDataLength
 		log.Println("bii.bCsmLength,bii.bDataLength", bii.bCsmLength, bii.bDataLength)
 	} else if writeFlag == 'd' {
-		bii.bDataLength += uint32(len(data))
+		bii.bDataLength = uint32(len(data)) + uint32(off)
 		bii.bCsmLength = bis[dataBlockId].bCsmLength
 		log.Println("bii.bCsmLength,bii.bDataLength", bii.bCsmLength, bii.bDataLength)
 	}
@@ -201,6 +202,7 @@ func writeFile(fd int, data []byte, writeFlag byte, bBlockId uint32, off int64) 
 		log.Fatal("block_info的信息更新失败:bBlockId", bBlockId, dataBlockId)
 	}
 	return nil
+
 }
 
 //删除文件函数

@@ -29,6 +29,7 @@ func (f *File) Attr(ctx context.Context, a *fuse.Attr) error {
 }
 func (f *File) Read(ctx context.Context, req *fuse.ReadRequest, resp *fuse.ReadResponse) error {
 	log.Println("Requested Read on File", f.name)
+	log.Println("req.Size:", req.Size)
 	name := f.name
 	bBlockId, flag := match(name)
 
@@ -36,7 +37,8 @@ func (f *File) Read(ctx context.Context, req *fuse.ReadRequest, resp *fuse.ReadR
 	if err != nil {
 		log.Fatal(err)
 	}
-	output := readFile(fd, flag, bBlockId, req.Offset)
+	output := readFile(fd, flag, bBlockId, req.Offset, req.Size)
+
 	fuseutil.HandleRead(req, resp, output)
 	err = syscall.Close(fd)
 	if err != nil {
@@ -80,8 +82,8 @@ func (f *File) Write(ctx context.Context, req *fuse.WriteRequest, resp *fuse.Wri
 	}
 
 	//f.data = req.Data
-	f.length = uint64(len(req.Data))
-	log.Println("Wrote to file", f.name)
+	f.length = uint64(len(req.Data)) + uint64(req.Offset)
+
 	return nil
 }
 func (f *File) Flush(ctx context.Context, req *fuse.FlushRequest) error {
